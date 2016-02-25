@@ -76,4 +76,4 @@ retry_after_from(Headers) ->
 
 http_request(Method, URL, Headers, ContentType, Body) ->
     hackney:request(
-        Method, URL, [{<<"Content-Type">>, ContentType} | Headers], Body, []).
+        Method, URL, [{<<"Content-Type">>, ContentType} | Headers], Body, [{pool, gcm}],).

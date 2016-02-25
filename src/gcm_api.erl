@@ -14,22 +14,27 @@ push(RegIds, Message, Key) ->
     Request = jsx:encode([{<<"registration_ids">>, RegIds}|Message]),
     ApiKey = string:concat("key=", Key),
 
-    try httpc:request(post, {?BASEURL, [{"Authorization", ApiKey}], "application/json", Request}, [], []) of
-        {ok, {{_, 200, _}, _Headers, Body}} ->
-            Json = jsx:decode(response_to_binary(Body)),
+    try http_request(post, ?BASEURL,
+        [{"Authorization", ApiKey}], <<"application/json">>, Request)
+    of
+        {ok, 200, _Headers, ClientRef} ->
+            {ok, Body} = hackney:body(ClientRef),
+            Json = jsx:decode(Body),
             error_logger:info_msg("Result was: ~p~n", [Json]),
             {ok, result_from(Json)};
-        {ok, {{_, 400, _}, _, Body}} ->
+        {ok, 400, _, ClientRef} ->
+            {ok, Body} = hackney:body(ClientRef),
             error_logger:error_msg("Error in request. Reason was: Bad Request - ~p~n", [Body]),
             {error, Body};
-        {ok, {{_, 401, _}, _, _}} ->
+        {ok, 401, _, _} ->
             error_logger:error_msg("Error in request. Reason was: authorization error~n", []),
             {error, auth_error};
-        {ok, {{_, Code, _}, Headers, _}} when Code >= 500 andalso Code =< 599 ->
+        {ok, Code, Headers, _} when Code >= 500 andalso Code =< 599 ->
             RetryTime = retry_after_from(Headers),
-            error_logger:error_msg("Error in request. Reason was: retry. Will retry in: ~p~n", [RetryTime]),
+            error_logger:error_msg("Error in request. Reason was: retry. Will retry in: ~p~n",
+                [RetryTime]),
             {error, {retry, RetryTime}};
-        {ok, {{_StatusLine, _, _}, _, _Body}} ->
+        {ok, _, _, _Body} ->
             error_logger:error_msg("Error in request. Reason was: timeout~n", []),
             {error, timeout};
         {error, Reason} ->
@@ -43,13 +48,6 @@ push(RegIds, Message, Key) ->
             error_logger:error_msg("Error in request. Exception ~p while calling URL: ~p~n", [Exception, ?BASEURL]),
             {error, Exception}
     end.
-
--spec response_to_binary(binary() | list()) -> binary().
-response_to_binary(Json) when is_binary(Json) ->
-    Json;
-
-response_to_binary(Json) when is_list(Json) ->
-    list_to_binary(Json).
 
 -spec result_from([{binary(),any()}]) -> result().
 result_from(Json) ->
@@ -75,3 +73,7 @@ retry_after_from(Headers) ->
                     Date - qdate:unixtime()
             end
     end.
+
+http_request(Method, URL, Headers, ContentType, Body) ->
+    hackney:request(
+        Method, URL, [{<<"Content-Type">>, ContentType} | Headers], Body, []).

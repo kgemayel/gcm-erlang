@@ -14,9 +14,9 @@ start_link() ->
 -spec start_child(atom(),string()) ->
        {'error',_} | {'ok','undefined' | pid()} | {'ok','undefined' | pid(),_}.
 start_child(Name, ApiKey) ->
-    % Pool = get_pool(),
-    % PoolName = proplists:get_value(pool_name, Pool, mypool),
-    % start_hackney(PoolName, hackney_options(Pool)),
+    Pool = get_pool(),
+    PoolName = proplists:get_value(pool_name, Pool, mypool),
+    start_hackney(PoolName, hackney_options(Pool)),
     supervisor:start_child(?MODULE, [Name, ApiKey]).
 
 -spec init([]) -> {ok, {{supervisor:strategy(), 5, 10}, [supervisor:child_spec()]}}.

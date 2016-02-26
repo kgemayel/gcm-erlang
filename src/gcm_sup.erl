@@ -15,7 +15,7 @@ start_link() ->
        {'error',_} | {'ok','undefined' | pid()} | {'ok','undefined' | pid(),_}.
 start_child(Name, ApiKey) ->
     {ok, Pool} = get_pool(),
-    PoolName = proplists:get_value(pool_name, Pool, mypool),
+    PoolName = proplists:get_value(pool_name, Pool, Name),
     start_hackney(PoolName, hackney_options(Pool)),
     supervisor:start_child(?MODULE, [Name, ApiKey]).
 

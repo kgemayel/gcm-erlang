@@ -61,10 +61,11 @@ result_from(Json) ->
 
 -spec retry_after_from(headers()) -> 'no_retry' | non_neg_integer().
 retry_after_from(Headers) ->
-    case proplists:get_value("retry-after", Headers) of
+    case proplists:get_value(<<"retry-after">>, Headers) of
         undefined ->
             no_retry;
-        RetryTime ->
+        RetryTime_b ->
+            RetryTime = binary_to_list(RetryTime_b),
             case string:to_integer(RetryTime) of
                 {Time, _} when is_integer(Time) ->
                     Time;
@@ -75,5 +76,5 @@ retry_after_from(Headers) ->
     end.
 
 http_request(Method, URL, Headers, ContentType, Body) ->
-    hackney:request(
-        Method, URL, [{<<"Content-Type">>, ContentType} | Headers], Body, [{pool, gcm}]).
+    hackney:request(Method, URL,
+        [{<<"Content-Type">>, ContentType} | Headers], Body, [{pool, gcm}]).

@@ -7,8 +7,14 @@
         stdlib,
         inets,
         ssl,
-        jsx
+        jsx,
+        hackney
     ]},
     {mod, {gcm_app, []}},
-    {env, []}
+    {env, [
+        {gcm, []},
+        {hackney, [
+            {pool_name, gcm}, {timeout, 150000}, {max_connections, 100}
+        ]}
+    ]}
 ]}.

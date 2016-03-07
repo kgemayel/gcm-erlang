@@ -11,7 +11,9 @@
 -define(SERVER, ?MODULE).
 -define(RETRY, 3).
 
--record(state, {key}).
+-define(BASEURL, "https://android.googleapis.com/gcm/send").
+
+-record(state, {key, uri}).
 
 start(Name, Key) ->
     gcm_sup:start_child(Name, Key).
@@ -36,20 +38,21 @@ start_link(Name, Key) ->
     gen_server:start_link({local, Name}, ?MODULE, [Key], []).
 
 init([Key]) ->
-    {ok, #state{key=Key}}.
+    URI = application:get_env(gcm, uri, ?BASEURL),
+    {ok, #state{key=Key, uri=URI}}.
 
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State};
 
-handle_call({send, RegIds, Message, Retry}, _From, #state{key=Key} = State) ->
-    Reply = do_push(RegIds, Message, Key, Retry),
+handle_call({send, RegIds, Message, Retry}, _From, #state{key=Key, uri=URI} = State) ->
+    Reply = do_push(URI, RegIds, Message, Key, Retry),
     {reply, Reply, State};
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({send, RegIds, Message, Retry}, #state{key=Key} = State) ->
-    do_push(RegIds, Message, Key, Retry),
+handle_cast({send, RegIds, Message, Retry}, #state{key=Key, uri=URI} = State) ->
+    do_push(URI, RegIds, Message, Key, Retry),
     {noreply, State};
 
 handle_cast(_Msg, State) ->
@@ -60,17 +63,17 @@ handle_info(_Info, State) ->
 
 terminate(_Reason, _State) ->
     ok.
-
+    
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %% Internal
-do_push(_, _, _, 0) ->
+do_push(_, _, _, _, 0) ->
     ok;
 
-do_push(RegIds, Message, Key, Retry) ->
+do_push(URI, RegIds, Message, Key, Retry) ->
     error_logger:info_msg("Sending message: ~p to reg ids: ~p retries: ~p.~n", [Message, RegIds, Retry]),
-    case gcm_api:push(RegIds, Message, Key) of
+    case gcm_api:push(URI, RegIds, Message, Key) of
         {ok, GCMResult} ->
             handle_result(GCMResult, RegIds);
         {error, {retry, RetryAfter}} ->

@@ -38,7 +38,7 @@ start_link(Name, Key) ->
     gen_server:start_link({local, Name}, ?MODULE, [Key], []).
 
 init([Key]) ->
-    {ok, URI} = application:get_env(gcm, uri, ?BASEURL),
+    URI = application:get_env(gcm, uri, ?BASEURL),
     {ok, #state{key=Key, uri=URI}}.
 
 handle_call(stop, _From, State) ->
